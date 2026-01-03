@@ -61,10 +61,20 @@ class DiscordRPC:
                 return True
             
             # Формируем ключ для проверки изменений
+            # НЕ включаем position, чтобы не спамить обновлениями
             track_key = f"{track.title}|{track.artist}|{track.is_playing}"
             
-            # Обновляем только если трек изменился или статус воспроизведения изменился
-            if track_key == self._last_track_key:
+            # Обновляем если:
+            # 1. Трек изменился
+            # 2. Статус воспроизведения изменился  
+            # 3. Каждые 15 секунд для обновления таймера
+            should_update = (
+                track_key != self._last_track_key or
+                (show_timestamp and track.is_playing and 
+                 int(time.time()) % 15 == 0)  # Обновляем таймер каждые 15 сек
+            )
+            
+            if not should_update:
                 return True
             
             self._last_track_key = track_key
@@ -93,14 +103,17 @@ class DiscordRPC:
             
             # Добавляем время, если трек играет
             if show_timestamp and track.is_playing and track.duration > 0:
-                # Показываем оставшееся время
-                remaining = track.duration - track.position
-                presence_data["end"] = int(time.time()) + remaining
+                # start = когда трек начался (текущее время минус позиция)
+                # end = когда трек закончится (start + длительность)
+                start_time = int(time.time()) - track.position
+                end_time = start_time + track.duration
+                presence_data["start"] = start_time
+                presence_data["end"] = end_time
             
             # Добавляем кнопки с ссылками на создателя
             presence_data["buttons"] = [
-                {"label": "Telegram", "url": "https://t.me/nevercr7"},
-                {"label": "GitHub", "url": "https://github.com/Nevercr7"}
+                {"label": "Telegram", "url": "https://t.me/nevercr7dev"},
+                {"label": "GitHub", "url": "https://github.com/Nevercr7/YandexMusicRPC"}
             ]
             
             self.rpc.update(**presence_data)
