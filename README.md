@@ -10,6 +10,8 @@
 - ✅ Автозапуск при старте Windows
 - ✅ Работает с десктопным приложением Yandex Music
 
+<img width="834" height="281" alt="image" src="https://github.com/user-attachments/assets/b9eef57b-a955-46d4-906f-ea4f1ec1c414" />
+
 ## Установка
 
 ### Вариант 1: Скачать готовый .exe
@@ -65,4 +67,5 @@ pyinstaller YandexMusicRPC.spec
 ## Лицензия
 
 MIT License
+
 
