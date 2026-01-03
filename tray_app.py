@@ -42,6 +42,11 @@ class YandexMusicRPCTray:
         self._on_quit = on_quit
         self._on_open = on_open
         self._update_interval = get_update_interval()
+        
+        # Статусы для отображения
+        self._discord_status = "Подключение..."
+        self._music_status = "Поиск музыки..."
+        self._error_message = None
     
     def create_icon_image(self, color="green"):
         """Создать изображение для иконки в трее"""
@@ -77,6 +82,30 @@ class YandexMusicRPCTray:
             return f"{status} {self._current_track.artist} - {self._current_track.title}"
         return "Нет активного трека"
     
+    def get_tooltip_text(self):
+        """Получить текст для всплывающей подсказки"""
+        lines = ["Yandex Music RPC"]
+        
+        # Статус Discord
+        lines.append(f"Discord: {self._discord_status}")
+        
+        # Статус музыки
+        lines.append(f"Музыка: {self._music_status}")
+        
+        # Ошибка если есть
+        if self._error_message:
+            lines.append(f"⚠ {self._error_message}")
+        
+        return "\n".join(lines)
+    
+    def get_discord_status_text(self):
+        """Текст статуса Discord для меню"""
+        return f"Discord: {self._discord_status}"
+    
+    def get_music_status_text(self):
+        """Текст статуса музыки для меню"""
+        return f"Музыка: {self._music_status}"
+    
     def on_quit(self, icon, item):
         """Обработчик выхода"""
         self.running = False
@@ -105,6 +134,17 @@ class YandexMusicRPCTray:
             item(
                 lambda text: self.get_status_text(),
                 self.on_show_status,
+                enabled=False
+            ),
+            item("─────────────", None, enabled=False),
+            item(
+                lambda text: self.get_discord_status_text(),
+                None,
+                enabled=False
+            ),
+            item(
+                lambda text: self.get_music_status_text(),
+                None,
                 enabled=False
             ),
             item("─────────────", None, enabled=False),
@@ -139,52 +179,107 @@ class YandexMusicRPCTray:
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
         
-        # Подключаемся к Discord
-        retry_count = 0
-        while not self.discord.connect() and self.running:
-            retry_count += 1
-            if retry_count >= 5:
-                self.update_icon("red")
-                return
-            time.sleep(5)
+        discord_retry_count = 0
         
         while self.running:
             try:
-                track = self._loop.run_until_complete(self._get_track())
-                self._current_track = track
+                discord_ok = False
+                music_ok = False
                 
-                cover_url = None
-                if track:
-                    cover_url = self._get_cover_url(track)
+                # === ПОИСК МУЗЫКИ (независимо от Discord) ===
+                try:
+                    track = self._loop.run_until_complete(self._get_track())
+                    self._current_track = track
+                    
+                    if track:
+                        self._music_status = f"✓ {track.artist} - {track.title}"[:40]
+                        music_ok = True
+                    else:
+                        self._music_status = "Нет активного трека"
+                except Exception as e:
+                    self._current_track = None
+                    self._music_status = f"✗ Ошибка: {str(e)[:20]}"
                 
+                # === ПРОВЕРКА DISCORD ===
                 if not self.discord.connected:
+                    discord_retry_count += 1
+                    self._discord_status = f"Подключение... (попытка {discord_retry_count})"
+                    self._update_menu()
+                    self._update_tooltip()
+                    
+                    if self.discord.connect():
+                        self._discord_status = "✓ Подключен"
+                        self._error_message = None
+                        discord_retry_count = 0
+                        discord_ok = True
+                    else:
+                        self._discord_status = "✗ Не подключен"
+                        self._error_message = "Discord не запущен или недоступен"
+                else:
+                    self._discord_status = "✓ Подключен"
+                    discord_ok = True
+                
+                # === ОБНОВЛЕНИЕ PRESENCE В DISCORD ===
+                if discord_ok and self._current_track:
+                    cover_url = None
+                    try:
+                        cover_url = self._get_cover_url(self._current_track)
+                    except Exception:
+                        pass
+                    
+                    try:
+                        settings = load_settings()
+                        self.discord.update_presence(self._current_track, settings.get("show_timestamp", True), cover_url)
+                    except Exception:
+                        self._discord_status = "✗ Ошибка отправки"
+                        self.discord.connected = False
+                        discord_retry_count = 0
+                
+                elif discord_ok and not self._current_track:
+                    # Очищаем статус если нет трека
+                    try:
+                        self.discord.update_presence(None, False, None)
+                    except Exception:
+                        pass
+                
+                # === ОБНОВЛЕНИЕ ИКОНКИ ===
+                if not discord_ok:
                     self.update_icon("red")
-                    if not self.discord.connect():
-                        time.sleep(self._update_interval)
-                        continue
-                
-                settings = load_settings()
-                self.discord.update_presence(track, settings.get("show_timestamp", True), cover_url)
-                
-                if track:
-                    if track.is_playing:
+                elif music_ok:
+                    if self._current_track and self._current_track.is_playing:
                         self.update_icon("green")
                     else:
                         self.update_icon("yellow")
                 else:
                     self.update_icon("gray")
                 
-                if self.icon:
-                    self.icon.menu = self.create_menu()
+                self._error_message = None if (discord_ok or music_ok) else self._error_message
+                self._update_menu()
+                self._update_tooltip()
                 
-            except Exception:
+            except Exception as e:
+                self._error_message = f"Ошибка: {str(e)[:30]}"
                 self.update_icon("red")
             
             time.sleep(self._update_interval)
         
-        self.discord.disconnect()
+        # Отключаемся при выходе
+        try:
+            self.discord.disconnect()
+        except Exception:
+            pass
         if self._loop:
             self._loop.close()
+    
+    def _update_menu(self):
+        """Обновить меню трея"""
+        if self.icon:
+            self.icon.menu = self.create_menu()
+    
+    def _update_tooltip(self):
+        """Обновить всплывающую подсказку"""
+        if self.icon:
+            self.icon.title = self.get_tooltip_text()
     
     def run(self):
         """Запустить приложение"""
@@ -198,7 +293,7 @@ class YandexMusicRPCTray:
         self.icon = pystray.Icon(
             "YandexMusicRPC",
             self.create_icon_image("gray"),
-            "Yandex Music RPC\nby @nevercr7",
+            self.get_tooltip_text(),
             self.create_menu()
         )
         
