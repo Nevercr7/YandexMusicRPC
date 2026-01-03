@@ -6,7 +6,6 @@
 
 - ✅ Отображение текущего трека в Discord (Listening to...)
 - ✅ Обложка альбома
-- ✅ Ссылки на Telegram и GitHub автора
 - ✅ Работа в системном трее
 - ✅ Автозапуск при старте Windows
 - ✅ Работает с десктопным приложением Yandex Music
@@ -66,3 +65,4 @@ pyinstaller YandexMusicRPC.spec
 ## Лицензия
 
 MIT License
+
