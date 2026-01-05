@@ -81,7 +81,13 @@ class DiscordRPC:
             
             # Формируем данные для Discord
             details = track.title[:128] if len(track.title) > 128 else track.title
-            state = track.artist[:128] if len(track.artist) > 128 else track.artist
+            
+            # Если на паузе - добавляем статус к исполнителю
+            if track.is_playing:
+                state = track.artist[:128] if len(track.artist) > 128 else track.artist
+            else:
+                state = f"{track.artist} • На паузе"
+                state = state[:128]
             
             # Используем обложку трека или дефолтную иконку
             large_image = cover_url if cover_url else "yandex_music"
@@ -101,7 +107,7 @@ class DiscordRPC:
                 "activity_type": ActivityType.LISTENING,  # Listening to...
             }
             
-            # Добавляем время, если трек играет
+            # Добавляем время только если трек играет
             if show_timestamp and track.is_playing and track.duration > 0:
                 # start = когда трек начался (текущее время минус позиция)
                 # end = когда трек закончится (start + длительность)
