@@ -57,6 +57,10 @@ pyinstaller YandexMusicRPC.spec
 - Discord (десктопное приложение)
 - Yandex Music (десктопное приложение)
 
+## Примечание
+
+Если у вас не коннектит к дс, проверьте, что у вас он открыт не с админа, либо открыть программу YaRPC от администратора.
+
 ## Автор
 
 **@nevercr7**
@@ -67,5 +71,6 @@ pyinstaller YandexMusicRPC.spec
 ## Лицензия
 
 MIT License
+
 
 
