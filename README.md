@@ -68,9 +68,17 @@ pyinstaller YandexMusicRPC.spec
 - Telegram: [@nevercr7dev](https://t.me/nevercr7dev)
 - GitHub: [Nevercr7](https://github.com/Nevercr7)
 
+## VT
+Может жаловаться на watacac, так как у него в программе есть функция добавления в автозапуск. Сертификат самоподписанный, из-за чего вот так. 
+Если есть подозрения, сделать компиляцию самостоятельно через pyinstaller или запустить app.py
+https://www.virustotal.com/gui/file/7b3bb77a64daf0ae28d2b07fcc291cfa478d9d775f744de40ea69ccd830ad8bd/detection
+<img width="1962" height="1610" alt="image" src="https://github.com/user-attachments/assets/a8298fe7-0fee-4888-b8d8-d09b8c692f31" />
+
+
 ## Лицензия
 
 MIT License
+
 
 
 
