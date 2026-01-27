@@ -47,7 +47,6 @@ def load_settings() -> dict:
         except Exception:
             pass
     
-    # Пробуем мигрировать токен из старого config.py
     try:
         import config
         if hasattr(config, 'YANDEX_MUSIC_TOKEN') and config.YANDEX_MUSIC_TOKEN:
@@ -110,3 +109,4 @@ def set_autostart_enabled(enabled: bool):
     settings = load_settings()
     settings["autostart"] = enabled
     save_settings(settings)
+
